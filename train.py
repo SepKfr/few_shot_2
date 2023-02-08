@@ -32,7 +32,12 @@ class Train:
         self.column_definition = self.params["column_definition"]
         self.pred_len = pred_len
 
+        self.exp_name = args.exp_name
+        self.model_path = "models_{}_{}".format(args.exp_name, pred_len)
+        self.model_params = self.formatter.get_default_model_params()
+        self.batch_size = self.model_params['minibatch_size'][0]
         self.train, self.valid, self.test = self.split_data()
+
         self.device = torch.device(args.cuda if torch.cuda.is_available() else "cpu")
         self.attn_type = args.attn_type
         self.criterion = nn.MSELoss()
@@ -42,10 +47,7 @@ class Train:
         self.best_val = 1e10
         self.param_history = []
         self.erros = dict()
-        self.exp_name = args.exp_name
-        self.model_path = "models_{}_{}".format(args.exp_name, pred_len)
-        self.model_params = self.formatter.get_default_model_params()
-        self.batch_size = self.model_params['minibatch_size'][0]
+
         self.best_model = nn.Module()
 
         for self.seed in [1899, 3848, 6949, 1759, 7573]:
