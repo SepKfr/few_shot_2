@@ -18,15 +18,21 @@ from modules.transformer import Transformer
 
 
 class Train:
-    def __init__(self, data, args):
+    def __init__(self, data, args, pred_len):
 
         self.few_shot = True if args.few_shot == "True" else False
         self.data = data
         self.len_data = len(data)
 
-        self.train, self.valid, self.test = self.split_data()
+        config = ExperimentConfig(pred_len, args.exp_name)
+        self.formatter = config.make_data_formatter()
+        self.params = self.formatter.get_experiment_params()
+        self.total_time_steps = self.params['total_time_steps']
+        self.num_encoder_steps = self.params['num_encoder_steps']
+        self.column_definition = self.params["column_definition"]
+        self.pred_len = pred_len
 
-        self.seed = args.seed
+        self.train, self.valid, self.test = self.split_data()
         self.device = torch.device(args.cuda if torch.cuda.is_available() else "cpu")
         self.attn_type = args.attn_type
         self.criterion = nn.MSELoss()
@@ -37,20 +43,13 @@ class Train:
         self.param_history = []
         self.erros = dict()
         self.exp_name = args.exp_name
+        self.model_path = "models_{}_{}".format(args.exp_name, pred_len)
+        self.model_params = self.formatter.get_default_model_params()
+        self.batch_size = self.model_params['minibatch_size'][0]
+        self.best_model = nn.Module()
 
-        for pred_len in [24, 48, 72, 96]:
-            config = ExperimentConfig(pred_len, args.exp_name)
-            self.formatter = config.make_data_formatter()
-            self.params = self.formatter.get_experiment_params()
-            self.total_time_steps = self.params['total_time_steps']
-            self.num_encoder_steps = self.params['num_encoder_steps']
-            self.column_definition = self.params["column_definition"]
-            self.pred_len = pred_len
-
-            self.model_path = "models_{}_{}".format(args.exp_name, pred_len)
-            self.model_params = self.formatter.get_default_model_params()
-            self.batch_size = self.model_params['minibatch_size'][0]
-            self.best_model = nn.Module()
+        for self.seed in [1899, 3848, 6949, 1759, 7573]:
+            self.seed = self.seed
             self.run_optuna(args)
             self.evaluate()
 
@@ -244,14 +243,11 @@ def main():
 
     args = parser.parse_args()
 
-    np.random.seed(args.seed)
-    random.seed(args.seed)
-    torch.manual_seed(args.seed)
-
     data_csv_path = "{}.csv".format(args.exp_name)
     raw_data = pd.read_csv(data_csv_path, dtype={'date': str})
 
-    Train(raw_data, args)
+    for pred_len in [24, 48, 72, 96]:
+        Train(raw_data, args, pred_len)
 
 
 if __name__ == '__main__':
