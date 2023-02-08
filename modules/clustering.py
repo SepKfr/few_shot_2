@@ -1,6 +1,5 @@
 import torch.nn as nn
 import torch
-from kmeans_pytorch import kmeans
 import numpy as np
 
 
