@@ -15,7 +15,7 @@
 
 # Lint as: python3
 
-from utils.base import DataTypes, InputTypes
+from Utils.base import DataTypes, InputTypes
 from data.electricity import ElectricityFormatter
 
 DataFormatter = ElectricityFormatter

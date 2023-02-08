@@ -17,8 +17,8 @@
 
 import sklearn.preprocessing
 
-from utils import utils
-from utils.base import GenericDataFormatter, DataTypes, InputTypes
+from Utils import utils
+from Utils.base import GenericDataFormatter, DataTypes, InputTypes
 
 
 class TrafficFormatter(GenericDataFormatter):

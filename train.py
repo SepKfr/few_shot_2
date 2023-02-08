@@ -12,7 +12,7 @@ import optuna
 from optuna.samplers import TPESampler
 from optuna.trial import TrialState
 from data_loader import ExperimentConfig
-from utils.base_train import batch_sampled_data
+from Utils.base_train import batch_sampled_data
 from modules.opt_model import NoamOpt
 from modules.transformer import Transformer
 
