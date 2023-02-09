@@ -31,7 +31,7 @@ class ConvAttn(nn.Module):
         if self.few_shot:
             self.cluster = Clustering(device=device, l_k=l_k, d_model=d_k*h)
 
-        self.layer_norm = nn.LayerNorm(d_k)
+        self.layer_norm = nn.LayerNorm(d_k, device=self.device)
 
     def forward(self, Q, K, V, attn_mask):
 
