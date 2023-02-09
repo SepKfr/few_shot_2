@@ -110,7 +110,6 @@ def sample_train_val_test(ddf, max_samples, time_steps, num_encoder_steps, pred_
     k = 0
 
     for j in range(len(ranges)):
-        print(j, end="\t")
         for i in range(j, len(ranges), 1):
             identifier, start_idx = ranges[i][0], ranges[i][1]
             if start_idx - start_idx_past > time_steps or k == 0:
