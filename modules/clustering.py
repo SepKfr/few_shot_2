@@ -13,8 +13,8 @@ class Clustering(nn.Module):
         self.num_clusters = num_clusters
 
         log_l_k = int(math.log(l_k))
-        self.shrink_k = nn.Linear(l_k, log_l_k)
-        self.shrink_v = nn.Linear(l_k, log_l_k)
+        self.shrink_k = nn.Linear(l_k, log_l_k, device=self.device)
+        self.shrink_v = nn.Linear(l_k, log_l_k, device=self.device)
 
         self.proj_to_cluster = nn.Sequential(nn.Linear(log_l_k*d_model, num_clusters, device=self.device),
                                              nn.ReLU())
