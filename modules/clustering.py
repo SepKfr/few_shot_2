@@ -9,11 +9,11 @@ class Clustering(nn.Module):
 
         self.device = device
         self.num_clusters = num_clusters
-        self.proj_to_cluster = nn.Sequential(nn.Linear(l_k*d_model, l_k),
-                                             nn.Linear(l_k, num_clusters),
+        self.proj_to_cluster = nn.Sequential(nn.Linear(l_k*d_model, l_k, device=self.device),
+                                             nn.Linear(l_k, num_clusters, device=self.device),
                                              nn.ReLU())
-        self.q_proj = nn.Linear(num_clusters, num_clusters)
-        self.k_proj = nn.Linear(num_clusters, num_clusters)
+        self.q_proj = nn.Linear(num_clusters, num_clusters, device=self.device)
+        self.k_proj = nn.Linear(num_clusters, num_clusters, device=self.device)
         self.cross_entropy = nn.CrossEntropyLoss()
 
     def forward(self, Q, K):
