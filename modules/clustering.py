@@ -76,7 +76,7 @@ class Clustering(nn.Module):
 
             scores_q_group = torch.softmax(scores_q_group, -1)
 
-            scores_q_group = torch.sum(scores_q_group, dim=2)[0]
+            scores_q_group = torch.mean(scores_q_group, dim=2)[0]
 
             scores_center[i] = scores_q_group
 
