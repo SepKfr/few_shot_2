@@ -31,6 +31,8 @@ class ConvAttn(nn.Module):
         if self.few_shot:
             self.cluster = Clustering(device=device, l_k=l_k, d_model=d_k*h)
 
+        self.layer_norm = nn.LayerNorm(d_k)
+
     def forward(self, Q, K, V, attn_mask):
 
         b, h, l, d_k = Q.shape
@@ -45,7 +47,7 @@ class ConvAttn(nn.Module):
             scores = torch.einsum('bhqd,bhkd->bhqk', Q, K) / np.sqrt(self.d_k)
             attn = torch.softmax(scores, -1)
             context = torch.einsum('bhqk,bhvd->bhqd', attn, V)
-            context_f = context + cntx
+            context_f = self.layer_norm(context + cntx)
 
             return [context_f, loss]
 
