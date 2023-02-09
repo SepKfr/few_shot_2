@@ -99,7 +99,7 @@ def sample_train_val_test(ddf, max_samples, time_steps, num_encoder_steps, pred_
 
     ranges_sublist = [ranges[i:i+batch_size] for i in range(0, len(ranges), batch_size)]
 
-    ranges_sublist = sorted(ranges_sublist, key=lambda x:x[1], reverse=False)
+    ranges_sublist = sorted(ranges_sublist, key=lambda x: x[1], reverse=False)
 
     ranges = reduce(lambda xs, ys: xs + ys, ranges_sublist)
 
@@ -122,7 +122,6 @@ def sample_train_val_test(ddf, max_samples, time_steps, num_encoder_steps, pred_
         outputs[i, :, :] = sliced[[target_col]]
         time[i, :, 0] = sliced[time_col]
         identifiers[i, :, 0] = sliced[id_col]
-
 
     sampled_data = {
         'inputs': inputs,
