@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from forecasting_models.ATA import ATA
-from forecasting_models.ConvAttn import ConvAttn
+from forecasting_models.BasicAttn import BasicAttn
 from forecasting_models.Informer import ProbAttention
 from forecasting_models.Autoformer import AutoCorrelation
 
@@ -58,7 +58,7 @@ class MultiHeadAttention(nn.Module):
 
         elif self.attn_type == "conv_attn":
 
-            outputs = ConvAttn(d_k=self.d_k, device=self.device, seed=self.seed, kernel=9,
+            outputs = BasicAttn(d_k=self.d_k, device=self.device, seed=self.seed,
                                      h=self.n_heads, l_k=k_s.shape[2], few_shot=self.few_shot)(
             Q=q_s, K=k_s, V=v_s, attn_mask=attn_mask)
 
