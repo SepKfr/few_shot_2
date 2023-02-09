@@ -9,7 +9,9 @@ class Clustering(nn.Module):
 
         self.device = device
         self.num_clusters = num_clusters
-        self.proj_to_cluster = nn.Linear(l_k*d_model, num_clusters)
+        self.proj_to_cluster = nn.Sequential(nn.Linear(l_k*d_model, l_k),
+                                             nn.Linear(l_k, num_clusters),
+                                             nn.ReLU())
         self.q_proj = nn.Linear(num_clusters, num_clusters)
         self.k_proj = nn.Linear(num_clusters, num_clusters)
         self.cross_entropy = nn.CrossEntropyLoss()
@@ -40,27 +42,37 @@ class Clustering(nn.Module):
 
         K_inds = torch.cat([K_re, inds], dim=-1)
 
-        cluster_means = torch.zeros((self.num_clusters, l_k, d_k*h), device=self.device)
-
         K_cluster = K_inds[:, :, -1].unsqueeze(-1).repeat(1, 1, 1+d_k*h)
 
+        scores_center = torch.zeros((self.num_clusters, b, h, l, l_k), device=self.device)
+
         for i in range(self.num_clusters):
+
             group = torch.where(K_cluster != i+1, K_inds, 0.0)
-            cluster_means[i] = torch.mean(group[:, :, :-1], dim=0)[0]
 
-        cluster_means = cluster_means.squeeze(1)
+            group = group[:, :, :-1]
 
-        cluster_means = cluster_means.unsqueeze(0).repeat(b, 1, 1, 1)
+            group = group.reshape(b, h, l_k, -1)
 
-        cluster_means = cluster_means.reshape(b, h, self.num_clusters, l_k, d_k)
+            shape = [b, h, l, l_k]
+            mask = np.tril(np.ones(shape))
+
+            scores_q_group = torch.einsum('bhqd, bhkd-> bhqk', Q, group) / np.sqrt(d_k)
+
+            attn_mask = torch.as_tensor(mask, dtype=torch.bool)
+            attn_mask = attn_mask.to(self.device)
+            scores_q_group.masked_fill_(attn_mask, -1e9)
+
+            scores_q_group = torch.softmax(scores_q_group, -1)
+
+            scores_center[i] = scores_q_group
 
         scores_qk = torch.einsum('bhqd, bhkd-> bhqk', Q, K) / np.sqrt(d_k)
-        scores_q_centers = torch.einsum('bhqd, bhckd-> bhcqk', Q, cluster_means) / np.sqrt(d_k)
 
-        scores_qk = scores_qk.unsqueeze(2)
+        scores_qk = scores_qk.unsqueeze(0)
 
-        final_scores = torch.cat([scores_qk, scores_q_centers], dim=2)
+        final_scores = torch.cat([scores_qk, scores_center], dim=0)
 
-        final_score = torch.max(final_scores, dim=2)[0]
+        final_score = torch.max(final_scores, dim=0)[0]
 
         return final_score, loss

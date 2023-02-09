@@ -22,6 +22,7 @@ import pandas as pd
 import random
 from torch.utils.data import DataLoader
 from torch.utils.data import TensorDataset
+from functools import reduce
 
 InputTypes = base.InputTypes
 
@@ -56,7 +57,8 @@ def batching(batch_size, x_en, x_de, y_t, test_id):
     return X_en, X_de, Y_t, tst_id
 
 
-def sample_train_val_test(ddf, max_samples, time_steps, num_encoder_steps, pred_len, column_definition, tgt_all=False):
+def sample_train_val_test(ddf, max_samples, time_steps, num_encoder_steps, pred_len,
+                          column_definition, batch_size=256, tgt_all=False):
 
     id_col = utils.get_single_col_by_input_type(InputTypes.ID, column_definition)
     time_col = utils.get_single_col_by_input_type(InputTypes.TIME, column_definition)
@@ -95,7 +97,11 @@ def sample_train_val_test(ddf, max_samples, time_steps, num_encoder_steps, pred_
                 len(valid_sampling_locations), len(valid_sampling_locations), replace=False)
         ]
 
-    ranges = sorted(ranges, key=lambda x: x[1], reverse=False)
+    ranges_sublist = [ranges[i:i+batch_size] for i in range(0, len(ranges), batch_size)]
+
+    ranges_sublist = sorted(ranges_sublist, key=lambda x:x[1], reverse=False)
+
+    ranges = reduce(lambda xs, ys: xs + ys, ranges_sublist)
 
     input_size = len(enc_input_cols)
     inputs = np.zeros((max_samples, time_steps, input_size))
@@ -105,31 +111,18 @@ def sample_train_val_test(ddf, max_samples, time_steps, num_encoder_steps, pred_
     time = np.empty((max_samples, time_steps, 1), dtype=object)
     identifiers = np.empty((max_samples, time_steps, 1), dtype=object)
 
-    start_idx_past = next(iter(ranges))[1]
+    for i, tup in enumerate(ranges):
 
-    k = 0
+        identifier, start_idx = tup
+        sliced = split_data_map[identifier].iloc[start_idx -
+                                                 time_steps:start_idx]
+        enc_inputs[i, :, :] = sliced[enc_input_cols].iloc[:num_encoder_steps]
+        dec_inputs[i, :, :] = sliced[enc_input_cols].iloc[num_encoder_steps:-pred_len]
+        inputs[i, :, :] = sliced[enc_input_cols]
+        outputs[i, :, :] = sliced[[target_col]]
+        time[i, :, 0] = sliced[time_col]
+        identifiers[i, :, 0] = sliced[id_col]
 
-    for j in range(len(ranges)):
-        for i in range(j, len(ranges), 1):
-            identifier, start_idx = ranges[i][0], ranges[i][1]
-            if start_idx - start_idx_past > time_steps or k == 0:
-                start_idx_past = start_idx
-                sliced = split_data_map[identifier].iloc[start_idx -
-                                                         time_steps:start_idx]
-                enc_inputs[k, :, :] = sliced[enc_input_cols].iloc[:num_encoder_steps]
-                dec_inputs[k, :, :] = sliced[enc_input_cols].iloc[num_encoder_steps:-pred_len]
-                inputs[k, :, :] = sliced[enc_input_cols]
-                outputs[k, :, :] = sliced[[target_col]]
-                time[k, :, 0] = sliced[time_col]
-                identifiers[k, :, 0] = sliced[id_col]
-                k += 1
-
-    inputs = inputs[inputs.nonzero()]
-    enc_inputs = enc_inputs[enc_inputs.nonzero()]
-    dec_inputs = dec_inputs[dec_inputs.nonzero()]
-    outputs = outputs[outputs.nonzero()]
-
-    print(enc_inputs.shape)
 
     sampled_data = {
         'inputs': inputs,
@@ -180,7 +173,8 @@ def batch_sampled_data(data, train_percent, max_samples, time_steps,
 
     sample_train = sample_train_val_test(train, train_max, time_steps, num_encoder_steps, pred_len, column_definition)
     sample_valid = sample_train_val_test(valid, valid_max, time_steps, num_encoder_steps, pred_len, column_definition)
-    sample_test = sample_train_val_test(test, valid_max, time_steps, num_encoder_steps, pred_len, column_definition, tgt_all)
+    sample_test = sample_train_val_test(test, valid_max, time_steps, num_encoder_steps, pred_len, column_definition,
+                                        tgt_all=tgt_all)
 
     train_data = TensorDataset(torch.FloatTensor(sample_train['enc_inputs']),
                                torch.FloatTensor(sample_train['dec_inputs']),

@@ -240,7 +240,7 @@ def main():
     parser.add_argument("--cuda", type=str, default="cuda:0")
     parser.add_argument("--seed", type=int, default=1234)
     parser.add_argument("--n_trials", type=int, default=3)
-    parser.add_argument("--few_shot", type=str, default="True")
+    parser.add_argument("--few_shot", type=str, default="False")
     parser.add_argument("--num_epochs", type=int, default=50)
 
     args = parser.parse_args()
