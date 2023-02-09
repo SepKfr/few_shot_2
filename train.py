@@ -23,6 +23,7 @@ class Train:
         self.few_shot = True if args.few_shot == "True" else False
         self.data = data
         self.len_data = len(data)
+        self.seed = args.seed
 
         config = ExperimentConfig(pred_len, args.exp_name)
         self.formatter = config.make_data_formatter()
@@ -50,10 +51,9 @@ class Train:
 
         self.best_model = nn.Module()
 
-        for self.seed in [1899, 3848, 6949, 1759, 7573]:
-            self.seed = self.seed
-            self.run_optuna(args)
-            self.evaluate()
+        self.seed = self.seed
+        self.run_optuna(args)
+        self.evaluate()
 
     def get_forecasting_model(self, src_input_size, tgt_input_size, d_model, n_heads, d_k, stack_size):
 
