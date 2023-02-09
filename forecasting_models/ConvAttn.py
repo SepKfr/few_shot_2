@@ -41,12 +41,13 @@ class ConvAttn(nn.Module):
 
         if self.few_shot:
 
-            scores, loss = self.cluster(Q, K)
+            cntx, loss = self.cluster(Q, K, V)
+            scores = torch.einsum('bhqd,bhkd->bhqk', Q, K) / np.sqrt(self.d_k)
             attn = torch.softmax(scores, -1)
-
             context = torch.einsum('bhqk,bhvd->bhqd', attn, V)
+            context_f = context + cntx
 
-            return [context, loss]
+            return [context_f, loss]
 
         else:
             scores = torch.einsum('bhqd,bhkd->bhqk', Q, K) / np.sqrt(self.d_k)
