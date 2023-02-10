@@ -39,17 +39,25 @@ class Transformer(nn.Module):
         self.device = device
 
         self.final_projection = nn.Linear(d_model, 1)
+        self.few_shot = few_shot
 
     def forward(self, enc_inputs, dec_inputs):
 
         enc_outputs = self.enc_embedding(enc_inputs)
         dec_outputs = self.dec_embedding(dec_inputs)
 
-        enc_outputs, enc_loss = self.encoder(enc_outputs)
-        dec_outputs, dec_loss, dec_enc_loss = self.decoder(dec_outputs, enc_outputs)
+        if self.few_shot:
+            enc_outputs, enc_loss = self.encoder(enc_outputs)
+            dec_outputs, dec_loss, dec_enc_loss = self.decoder(dec_outputs, enc_outputs)
+            loss_dec_enc = enc_loss + enc_loss + dec_enc_loss
 
-        loss_dec_enc = enc_loss + enc_loss + dec_enc_loss
+        else:
+            enc_outputs = self.encoder(enc_outputs)
+            dec_outputs = self.decoder(dec_outputs, enc_outputs)
 
         outputs = self.final_projection(dec_outputs[:, -self.pred_len:, :])
 
-        return outputs, loss_dec_enc
+        if self.few_shot:
+            return outputs, loss_dec_enc
+        else:
+            return outputs
