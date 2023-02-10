@@ -23,8 +23,6 @@ class Clustering(nn.Module):
                                              nn.ReLU())
         self.proj_to_cluster_q = nn.Sequential(nn.Linear(log_l * d_model, num_clusters, device=self.device),
                                                nn.ReLU())
-        self.q_proj = nn.Linear(num_clusters, num_clusters, device=self.device)
-        self.k_proj = nn.Linear(num_clusters, num_clusters, device=self.device)
         self.cross_entropy = nn.CrossEntropyLoss()
 
     def forward(self, Q, K, V):
@@ -42,8 +40,8 @@ class Clustering(nn.Module):
         cluster_k_proj = self.proj_to_cluster_k(cluster_k)
         cluster_q_proj = self.proj_to_cluster_q(cluster_q)
 
-        cluster_q = torch.softmax(self.q_proj(cluster_q_proj), dim=-1)
-        cluster_k = torch.softmax(self.k_proj(cluster_k_proj), dim=-1)
+        cluster_q = torch.softmax(cluster_q_proj, dim=-1)
+        cluster_k = torch.softmax(cluster_k_proj, dim=-1)
 
         mu = torch.mean(cluster_q, dim=0)
         sigma = nn.Softplus()(torch.std(cluster_k, dim=0))
