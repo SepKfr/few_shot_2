@@ -32,13 +32,13 @@ class DecoderLayer(nn.Module):
 
     def forward(self, dec_inputs, enc_outputs, dec_self_attn_mask=None, dec_enc_attn_mask=None):
 
-        out, dec_outputs = self.dec_self_attn(dec_inputs, dec_inputs, dec_inputs, dec_self_attn_mask)
+        out, dec_loss = self.dec_self_attn(dec_inputs, dec_inputs, dec_inputs, dec_self_attn_mask)
         out = self.layer_norm(dec_inputs + out)
-        out2, dec_enc_outputs = self.dec_enc_attn(out, enc_outputs, enc_outputs, dec_enc_attn_mask)
+        out2, dec_enc_loss = self.dec_enc_attn(out, enc_outputs, enc_outputs, dec_enc_attn_mask)
         out2 = self.layer_norm(out + out2)
         out3 = self.pos_ffn(out2)
         out3 = self.layer_norm(out2 + out3)
-        return out3, dec_outputs, dec_enc_outputs
+        return out3, dec_loss, dec_enc_loss
 
 
 class Decoder(nn.Module):

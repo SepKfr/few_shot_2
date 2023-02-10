@@ -45,7 +45,7 @@ class MultiHeadAttention(nn.Module):
         # ATA forecasting model
 
         if self.attn_type == "ATA":
-            outputs = ATA(d_k=self.d_k, device=self.device, h=self.n_heads, seed=self.seed,
+            outputs, loss = ATA(d_k=self.d_k, device=self.device, h=self.n_heads, seed=self.seed,
                           l=q_s.shape[2], l_k=k_s.shape[2], few_shot=self.few_shot)(
             Q=q_s, K=k_s, V=v_s, attn_mask=attn_mask)
 
@@ -59,7 +59,7 @@ class MultiHeadAttention(nn.Module):
 
         elif self.attn_type == "conv_attn":
 
-            outputs = BasicAttn(d_k=self.d_k, device=self.device, seed=self.seed,
+            outputs, loss = BasicAttn(d_k=self.d_k, device=self.device, seed=self.seed,
                                      h=self.n_heads, l=q_s.shape[2], l_k=k_s.shape[2], few_shot=self.few_shot)(
             Q=q_s, K=k_s, V=v_s, attn_mask=attn_mask)
 
@@ -69,6 +69,6 @@ class MultiHeadAttention(nn.Module):
             mask_flag = True if attn_mask is not None else False
             outputs = ProbAttention(mask_flag=mask_flag, seed=self.seed)(q_s, k_s, v_s, attn_mask)
 
-        context = outputs[0].transpose(1, 2).contiguous().view(batch_size, -1, self.n_heads * self.d_v)
+        context = outputs.transpose(1, 2).contiguous().view(batch_size, -1, self.n_heads * self.d_v)
         output = self.fc(context)
-        return output, outputs[-1]
+        return output, loss

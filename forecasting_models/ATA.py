@@ -85,10 +85,10 @@ class ATA(nn.Module):
             context = torch.einsum('bhqk,bhvd->bhqd', attn, V)
             context_f = self.layer_norm(context + cntx)
 
-            return [context_f, loss]
+            return context_f, loss
 
         else:
             scores = torch.einsum('bhqd,bhkd->bhqk', Q, K) / np.sqrt(self.d_k)
             attn = torch.softmax(scores, -1)
             context = torch.einsum('bhqk,bhvd->bhqd', attn, V)
-            return [context, 0.0]
+            return context, 0.0
