@@ -42,16 +42,17 @@ class MultiHeadAttention(nn.Module):
         k_s = self.WK(K).view(batch_size, -1, self.n_heads, self.d_k).transpose(1, 2)
         v_s = self.WV(V).view(batch_size, -1, self.n_heads, self.d_v).transpose(1, 2)
 
+        loss = 0.0
         # ATA forecasting model
 
         if self.attn_type == "ATA":
             if self.few_shot:
                 outputs, loss = ATA(d_k=self.d_k, device=self.device, h=self.n_heads, seed=self.seed,
-                              l=q_s.shape[2], l_k=k_s.shape[2], few_shot=self.few_shot)(
+                                    l=q_s.shape[2], l_k=k_s.shape[2], few_shot=self.few_shot)(
                 Q=q_s, K=k_s, V=v_s, attn_mask=attn_mask)
             else:
                 outputs = ATA(d_k=self.d_k, device=self.device, h=self.n_heads, seed=self.seed,
-                                    l=q_s.shape[2], l_k=k_s.shape[2], few_shot=self.few_shot)(
+                              l=q_s.shape[2], l_k=k_s.shape[2], few_shot=self.few_shot)(
                     Q=q_s, K=k_s, V=v_s, attn_mask=attn_mask)
 
         # Autoformer forecasting model
@@ -76,4 +77,7 @@ class MultiHeadAttention(nn.Module):
 
         context = outputs.transpose(1, 2).contiguous().view(batch_size, -1, self.n_heads * self.d_v)
         output = self.fc(context)
-        return output, loss
+        if loss != 0.0:
+            return output, loss
+        else:
+            return output
