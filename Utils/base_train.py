@@ -97,7 +97,7 @@ def sample_train_val_test(ddf, max_samples, time_steps, num_encoder_steps, pred_
                 len(valid_sampling_locations), len(valid_sampling_locations), replace=False)
         ]
 
-    ranges = [ranges[i:i+batch_size] for i in range(0, len(ranges), batch_size)]
+    '''ranges = [ranges[i:i+batch_size] for i in range(0, len(ranges), batch_size)]
 
     def Sort(List):
         new_list = []
@@ -107,7 +107,7 @@ def sample_train_val_test(ddf, max_samples, time_steps, num_encoder_steps, pred_
 
     ranges = Sort(ranges)
 
-    ranges = reduce(lambda xs, ys: xs + ys, ranges)
+    ranges = reduce(lambda xs, ys: xs + ys, ranges)'''
 
     input_size = len(enc_input_cols)
     inputs = np.zeros((max_samples, time_steps, input_size))
