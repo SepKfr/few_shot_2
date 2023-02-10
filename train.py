@@ -149,8 +149,12 @@ class Train:
             total_loss = 0
             model.train()
             for train_enc, train_dec, train_y in self.train:
-                output, cluster_loss = model(train_enc.to(self.device), train_dec.to(self.device))
-                loss = nn.MSELoss()(output, train_y.to(self.device)) + 0.005 * cluster_loss
+                if self.few_shot:
+                    output, cluster_loss = model(train_enc.to(self.device), train_dec.to(self.device))
+                    loss = nn.MSELoss()(output, train_y.to(self.device)) + 0.005 * cluster_loss
+                else:
+                    output = model(train_enc.to(self.device), train_dec.to(self.device))
+                    loss = nn.MSELoss()(output, train_y.to(self.device))
 
                 total_loss += loss.item()
 
@@ -161,8 +165,12 @@ class Train:
             model.eval()
             test_loss = 0
             for valid_enc, valid_dec, valid_y in self.valid:
-                output, cluster_loss = model(valid_enc.to(self.device), valid_dec.to(self.device))
-                loss = nn.MSELoss()(output, valid_y.to(self.device)) + 0.005 * cluster_loss
+                if self.few_shot:
+                    output, cluster_loss = model(valid_enc.to(self.device), valid_dec.to(self.device))
+                    loss = nn.MSELoss()(output, valid_y.to(self.device)) + 0.005 * cluster_loss
+                else:
+                    output = model(valid_enc.to(self.device), valid_dec.to(self.device))
+                    loss = nn.MSELoss()(output, valid_y.to(self.device))
 
                 test_loss += loss.item()
 
@@ -193,7 +201,10 @@ class Train:
         j = 0
 
         for test_enc, test_dec, test_y in self.test:
-            output, _ = self.best_model(test_enc.to(self.device), test_dec.to(self.device))
+            if self.few_shot:
+                output, _ = self.best_model(test_enc.to(self.device), test_dec.to(self.device))
+            else:
+                output = self.best_model(test_enc.to(self.device), test_dec.to(self.device))
 
             predictions[j, :output.shape[0], :] = output.squeeze(-1).cpu().detach().numpy()
             test_y_tot[j, :test_y.shape[0], :] = test_y.squeeze(-1).cpu().detach().numpy()

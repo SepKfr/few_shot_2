@@ -47,8 +47,7 @@ class ATA(nn.Module):
         self.few_shot = few_shot
         if self.few_shot:
             self.cluster = Clustering(device=device, l=l, l_k=l_k, d_model=d_k * h)
-
-        self.layer_norm = nn.LayerNorm(d_k, device=self.device)
+            self.layer_norm = nn.LayerNorm(d_k, device=self.device)
 
     def forward(self, Q, K, V, attn_mask):
 
@@ -91,4 +90,4 @@ class ATA(nn.Module):
             scores = torch.einsum('bhqd,bhkd->bhqk', Q, K) / np.sqrt(self.d_k)
             attn = torch.softmax(scores, -1)
             context = torch.einsum('bhqk,bhvd->bhqd', attn, V)
-            return context, 0.0
+            return context
