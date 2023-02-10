@@ -20,26 +20,21 @@ from modules.transformer import Transformer
 class Train:
     def __init__(self, data, args, pred_len):
 
+        config = ExperimentConfig(pred_len, args.exp_name)
         self.few_shot = True if args.few_shot == "True" else False
         self.data = data
         self.len_data = len(data)
-        self.seed = args.seed
-
-        config = ExperimentConfig(pred_len, args.exp_name)
         self.formatter = config.make_data_formatter()
         self.params = self.formatter.get_experiment_params()
         self.total_time_steps = self.params['total_time_steps']
         self.num_encoder_steps = self.params['num_encoder_steps']
         self.column_definition = self.params["column_definition"]
         self.pred_len = pred_len
-
-        self.exp_name = args.exp_name
+        self.seed = args.seed
+        self.device = torch.device(args.cuda if torch.cuda.is_available() else "cpu")
         self.model_path = "models_{}_{}".format(args.exp_name, pred_len)
         self.model_params = self.formatter.get_default_model_params()
         self.batch_size = self.model_params['minibatch_size'][0]
-        self.train, self.valid, self.test = self.split_data()
-
-        self.device = torch.device(args.cuda if torch.cuda.is_available() else "cpu")
         self.attn_type = args.attn_type
         self.criterion = nn.MSELoss()
         self.mae_loss = nn.L1Loss()
@@ -48,10 +43,9 @@ class Train:
         self.best_val = 1e10
         self.param_history = []
         self.erros = dict()
-
+        self.exp_name = args.exp_name
         self.best_model = nn.Module()
-
-        self.seed = self.seed
+        self.train, self.valid, self.test = self.split_data()
         self.run_optuna(args)
         self.evaluate()
 
@@ -249,7 +243,7 @@ def main():
     parser.add_argument("--model_name", type=str, default="ATA")
     parser.add_argument("--exp_name", type=str, default='traffic')
     parser.add_argument("--cuda", type=str, default="cuda:0")
-    parser.add_argument("--seed", type=int, default=1234)
+    parser.add_argument("--seed", type=int, default='1899')
     parser.add_argument("--n_trials", type=int, default=3)
     parser.add_argument("--few_shot", type=str, default="True")
     parser.add_argument("--num_epochs", type=int, default=50)
