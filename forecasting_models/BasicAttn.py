@@ -10,7 +10,7 @@ torch.backends.cudnn.deterministic = True
 
 class BasicAttn(nn.Module):
 
-    def __init__(self, d_k, h, device, seed, l_k, few_shot):
+    def __init__(self, d_k, h, device, seed, l, l_k, few_shot):
 
         super(BasicAttn, self).__init__()
 
@@ -23,7 +23,7 @@ class BasicAttn(nn.Module):
 
         self.few_shot = few_shot
         if self.few_shot:
-            self.cluster = Clustering(device=device, l_k=l_k, d_model=d_k*h)
+            self.cluster = Clustering(device=device, l=l, l_k=l_k, d_model=d_k*h)
 
         self.layer_norm = nn.LayerNorm(d_k, device=self.device)
 

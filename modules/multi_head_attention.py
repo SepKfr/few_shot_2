@@ -59,7 +59,7 @@ class MultiHeadAttention(nn.Module):
         elif self.attn_type == "conv_attn":
 
             outputs = BasicAttn(d_k=self.d_k, device=self.device, seed=self.seed,
-                                     h=self.n_heads, l_k=k_s.shape[2], few_shot=self.few_shot)(
+                                     h=self.n_heads, l=q_s.shape[2], l_k=k_s.shape[2], few_shot=self.few_shot)(
             Q=q_s, K=k_s, V=v_s, attn_mask=attn_mask)
 
         # Informer forecasting model

@@ -6,18 +6,23 @@ import numpy as np
 
 
 class Clustering(nn.Module):
-    def __init__(self, *, device, num_clusters=3, l_k, d_model):
+    def __init__(self, *, device, num_clusters=3, l, l_k, d_model):
         super(Clustering, self).__init__()
 
         self.device = device
         self.num_clusters = num_clusters
 
         log_l_k = int(math.log(l_k))
+        log_l = int(math.log(l))
+
         self.shrink_k = nn.Linear(l_k, log_l_k, device=self.device)
         self.shrink_v = nn.Linear(l_k, log_l_k, device=self.device)
+        self.shrink_q = nn.Linear(l, log_l, device=self.device)
 
-        self.proj_to_cluster = nn.Sequential(nn.Linear(log_l_k*d_model, num_clusters, device=self.device),
+        self.proj_to_cluster_k = nn.Sequential(nn.Linear(log_l_k*d_model, num_clusters, device=self.device),
                                              nn.ReLU())
+        self.proj_to_cluster_q = nn.Sequential(nn.Linear(log_l * d_model, num_clusters, device=self.device),
+                                               nn.ReLU())
         self.q_proj = nn.Linear(num_clusters, num_clusters, device=self.device)
         self.k_proj = nn.Linear(num_clusters, num_clusters, device=self.device)
         self.cross_entropy = nn.CrossEntropyLoss()
@@ -28,12 +33,16 @@ class Clustering(nn.Module):
 
         K = self.shrink_k(K.permute(0, 1, 3, 2)).permute(0, 1, 3, 2)
         V = self.shrink_v(V.permute(0, 1, 3, 2)).permute(0, 1, 3, 2)
+        q_shrink = self.shrink_q(Q.permute(0, 1, 3, 2)).permute(0, 1, 3, 2)
         l_k = K.shape[2]
+        l_shrink = q_shrink.shape[2]
 
         cluster_k = K.reshape(b, l_k*d_k*h)
-        cluster_k_proj = self.proj_to_cluster(cluster_k)
+        cluster_q = q_shrink.reshape(b, l_shrink*d_k*h)
+        cluster_k_proj = self.proj_to_cluster_k(cluster_k)
+        cluster_q_proj = self.proj_to_cluster_q(cluster_q)
 
-        cluster_q = torch.softmax(self.q_proj(cluster_k_proj), dim=-1)
+        cluster_q = torch.softmax(self.q_proj(cluster_q_proj), dim=-1)
         cluster_k = torch.softmax(self.k_proj(cluster_k_proj), dim=-1)
 
         mu = torch.mean(cluster_q, dim=0)
@@ -43,32 +52,49 @@ class Clustering(nn.Module):
         likelihood = dist.log_prob(cluster_k)
         loss = -torch.mean(likelihood) + self.cross_entropy(cluster_q, cluster_q)
 
-        inds = torch.argmax(cluster_q, dim=-1)
-        inds = inds.unsqueeze(-1).repeat(1, l_k)
-        inds = inds.unsqueeze(-1)
+        def get_ind_cluster(cluster, tup):
 
-        K_re = K.reshape(b, l_k, -1)
+            seq_len = tup.shape[2]
+            inds = torch.argmax(cluster, dim=-1)
+            inds = inds.unsqueeze(-1).repeat(1, seq_len)
+            inds = inds.unsqueeze(-1)
 
-        K_inds = torch.cat([K_re, inds], dim=-1)
+            tup = tup.reshape(b, seq_len, -1)
 
-        K_cluster = K_inds[:, :, -1].unsqueeze(-1).repeat(1, 1, 1+d_k*h)
+            tup_inds = torch.cat([tup, inds], dim=-1)
 
-        scores_center = torch.zeros((self.num_clusters, b, h, l, l_k), device=self.device)
+            tup_cluster = tup_inds[:, :, -1].unsqueeze(-1).repeat(1, 1, 1+d_k*h)
+            tup_cluster = tup_cluster.long()
 
-        for i in range(self.num_clusters):
+            return tup_cluster, tup_inds
 
-            group = torch.where(K_cluster != i+1, K_inds, 0.0)
+        def get_group(cluster, inds, k):
+
+            group = torch.where(cluster != k + 1, inds, 0.0)
 
             group = group[:, :, :-1]
 
-            group = group.reshape(b, h, l_k, -1)
+            group = group.reshape(b, h, -1, d_k)
 
-            group = group.unsqueeze(2).repeat(1, 1, l_k, 1, 1)
+            return group
+
+        scores_center = torch.zeros((self.num_clusters, b, h, l, l_k), device=self.device)
+
+        Q_cluster, Q_inds = get_ind_cluster(cluster_q, Q)
+
+        K_cluster, K_inds = get_ind_cluster(cluster_k, K)
+
+        for i in range(self.num_clusters):
+
+            group_Q = get_group(Q_cluster, Q_inds, i)
+            group_K = get_group(K_cluster, K_inds, i)
+
+            group_K = group_K.unsqueeze(2).repeat(1, 1, l_k, 1, 1)
 
             shape = [b, h, l_k, l, l_k]
             mask = np.tril(np.ones(shape))
 
-            scores_q_group = torch.einsum('bhqd, bhckd-> bhcqk', Q, group) / np.sqrt(d_k)
+            scores_q_group = torch.einsum('bhqd, bhckd-> bhcqk', group_Q, group_K) / np.sqrt(d_k)
 
             attn_mask = torch.as_tensor(mask, dtype=torch.bool)
             attn_mask = attn_mask.to(self.device)
@@ -78,7 +104,11 @@ class Clustering(nn.Module):
 
             scores_q_group = torch.mean(scores_q_group, dim=2)[0]
 
-            scores_center[i] = scores_q_group
+            q_ind = Q_cluster[:, :, :-1].reshape(b, h, -1, d_k)
+
+            scores_center[i, torch.arange(b)[:, None, None],
+                             torch.arange(h)[None, :, None],
+            q_ind[:, :, :, 0], :] = scores_q_group
 
         final_score = torch.max(scores_center, dim=0)[0]
         attn = torch.softmax(final_score, -1)
