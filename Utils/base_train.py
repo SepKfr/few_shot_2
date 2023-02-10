@@ -22,7 +22,6 @@ import pandas as pd
 import random
 from torch.utils.data import DataLoader
 from torch.utils.data import TensorDataset
-from functools import reduce
 
 InputTypes = base.InputTypes
 
@@ -57,8 +56,7 @@ def batching(batch_size, x_en, x_de, y_t, test_id):
     return X_en, X_de, Y_t, tst_id
 
 
-def sample_train_val_test(ddf, max_samples, time_steps, num_encoder_steps, pred_len,
-                          column_definition, batch_size=256, tgt_all=False):
+def sample_train_val_test(ddf, max_samples, time_steps, num_encoder_steps, pred_len, column_definition, tgt_all=False):
 
     id_col = utils.get_single_col_by_input_type(InputTypes.ID, column_definition)
     time_col = utils.get_single_col_by_input_type(InputTypes.TIME, column_definition)
@@ -82,10 +80,7 @@ def sample_train_val_test(ddf, max_samples, time_steps, num_encoder_steps, pred_
 
             split_data_map[identifier] = df
 
-    if max_samples == -1:
-        max_samples = len(valid_sampling_locations)
-
-    if 0 < max_samples <= len(valid_sampling_locations):
+    if 0 < max_samples < len(valid_sampling_locations):
         ranges = [
             valid_sampling_locations[i] for i in np.random.choice(
                 len(valid_sampling_locations), max_samples, replace=False)
@@ -97,18 +92,6 @@ def sample_train_val_test(ddf, max_samples, time_steps, num_encoder_steps, pred_
                 len(valid_sampling_locations), len(valid_sampling_locations), replace=False)
         ]
 
-    '''ranges = [ranges[i:i+batch_size] for i in range(0, len(ranges), batch_size)]
-
-    def Sort(List):
-        new_list = []
-        for ls in List:
-            new_list.append(sorted(ls, key=lambda x:x[1]))
-        return new_list
-
-    ranges = Sort(ranges)
-
-    ranges = reduce(lambda xs, ys: xs + ys, ranges)'''
-
     input_size = len(enc_input_cols)
     inputs = np.zeros((max_samples, time_steps, input_size))
     enc_inputs = np.zeros((max_samples, num_encoder_steps, input_size))
@@ -118,7 +101,8 @@ def sample_train_val_test(ddf, max_samples, time_steps, num_encoder_steps, pred_
     identifiers = np.empty((max_samples, time_steps, 1), dtype=object)
 
     for i, tup in enumerate(ranges):
-
+        if (i + 1 % 1000) == 0:
+            print(i + 1, 'of', max_samples, 'samples done...')
         identifier, start_idx = tup
         sliced = split_data_map[identifier].iloc[start_idx -
                                                  time_steps:start_idx]
@@ -178,8 +162,7 @@ def batch_sampled_data(data, train_percent, max_samples, time_steps,
 
     sample_train = sample_train_val_test(train, train_max, time_steps, num_encoder_steps, pred_len, column_definition)
     sample_valid = sample_train_val_test(valid, valid_max, time_steps, num_encoder_steps, pred_len, column_definition)
-    sample_test = sample_train_val_test(test, valid_max, time_steps, num_encoder_steps, pred_len, column_definition,
-                                        tgt_all=tgt_all)
+    sample_test = sample_train_val_test(test, valid_max, time_steps, num_encoder_steps, pred_len, column_definition, tgt_all)
 
     train_data = TensorDataset(torch.FloatTensor(sample_train['enc_inputs']),
                                torch.FloatTensor(sample_train['dec_inputs']),
