@@ -43,6 +43,10 @@ class Transformer(nn.Module):
 
     def forward(self, enc_inputs, dec_inputs):
 
+        if not self.few_shot:
+            enc_inputs = enc_inputs[torch.randperm(enc_inputs.size()[0])]
+            dec_inputs = dec_inputs[torch.randperm(enc_inputs.size()[0])]
+
         enc_outputs = self.enc_embedding(enc_inputs)
         dec_outputs = self.dec_embedding(dec_inputs)
 
