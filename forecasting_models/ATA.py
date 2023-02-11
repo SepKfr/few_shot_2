@@ -73,4 +73,4 @@ class ATA(nn.Module):
 
         attn = torch.softmax(scores, -1)
         context = torch.einsum('bhqk,bhkd->bhqd', attn, V)
-        return context
+        return context, attn

@@ -29,4 +29,3 @@ def extract_cols_from_data_type(data_type, column_definition,
       for tup in column_definition
       if tup[1] == data_type and tup[2] not in excluded_input_types
     ]
-

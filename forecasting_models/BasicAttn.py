@@ -2,17 +2,16 @@ import numpy as np
 import torch
 import torch.nn as nn
 import random
-from modules.clustering import Clustering
 
 torch.backends.cudnn.benchmark = False
 torch.backends.cudnn.deterministic = True
 
 
-class BasicAttn(nn.Module):
+class ConvAttn(nn.Module):
 
-    def __init__(self, d_k, h, device, seed, l, l_k, few_shot):
+    def __init__(self, d_k, h, kernel, device, seed):
 
-        super(BasicAttn, self).__init__()
+        super(ConvAttn, self).__init__()
 
         torch.manual_seed(seed)
         random.seed(seed)
@@ -20,27 +19,22 @@ class BasicAttn(nn.Module):
 
         self.device = device
         self.d_k = d_k
-
-        self.few_shot = few_shot
-        if self.few_shot:
-            self.cluster = Clustering(device=device, l=l, l_k=l_k, d_model=d_k*h)
-
-        self.layer_norm = nn.LayerNorm(d_k, device=self.device)
+        self.conv_q = nn.Conv1d(in_channels=d_k*h, out_channels=d_k*h,
+                                kernel_size=kernel,
+                                padding=int(kernel/2), bias=False).to(device)
+        self.conv_k = nn.Conv1d(in_channels=d_k * h, out_channels=d_k * h,
+                                kernel_size=kernel,
+                                padding=int(kernel / 2), bias=False).to(device)
 
     def forward(self, Q, K, V, attn_mask):
 
-        if self.few_shot:
+        b, h, l, d_k = Q.shape
+        l_k = K.shape[2]
 
-            cntx, loss = self.cluster(Q, K, V)
-            scores = torch.einsum('bhqd,bhkd->bhqk', Q, K) / np.sqrt(self.d_k)
-            attn = torch.softmax(scores, -1)
-            context = torch.einsum('bhqk,bhvd->bhqd', attn, V)
-            context_f = self.layer_norm(context + cntx)
+        Q = self.conv_q(Q.reshape(b, h*d_k, l))[:, :, :l].reshape(b, h, l, d_k)
+        K = self.conv_k(K.reshape(b, h*d_k, l_k))[:, :, :l_k].reshape(b, h, l_k, d_k)
 
-            return [context_f, loss]
-
-        else:
-            scores = torch.einsum('bhqd,bhkd->bhqk', Q, K) / np.sqrt(self.d_k)
-            attn = torch.softmax(scores, -1)
-            context = torch.einsum('bhqk,bhvd->bhqd', attn, V)
-            return [context, 0.0]
+        scores = torch.einsum('bhqd,bhkd->bhqk', Q, K) / np.sqrt(self.d_k)
+        attn = torch.softmax(scores, -1)
+        context = torch.einsum('bhqk,bhvd->bhqd', attn, V)
+        return context, attn

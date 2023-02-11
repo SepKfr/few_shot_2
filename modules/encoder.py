@@ -11,7 +11,7 @@ from modules.encoding import PositionalEncoding
 class EncoderLayer(nn.Module):
 
     def __init__(self, d_model, d_ff, d_k, d_v, n_heads,
-                 device, attn_type, seed, few_shot):
+                 device, attn_type, seed):
         super(EncoderLayer, self).__init__()
 
         np.random.seed(seed)
@@ -21,32 +21,25 @@ class EncoderLayer(nn.Module):
         self.enc_self_attn = MultiHeadAttention(
             d_model=d_model, d_k=d_k,
             d_v=d_v, n_heads=n_heads, device=device,
-            attn_type=attn_type, seed=seed, few_shot=few_shot)
+            attn_type=attn_type, seed=seed)
         self.pos_ffn = PoswiseFeedForwardNet(
             d_model=d_model, d_ff=d_ff, seed=seed)
         self.layer_norm = nn.LayerNorm(d_model, elementwise_affine=False)
-        self.few_shot = few_shot
 
     def forward(self, enc_inputs, enc_self_attn_mask=None):
 
-        if self.few_shot:
-            out, enc_loss = self.enc_self_attn(enc_inputs, enc_inputs, enc_inputs, attn_mask=enc_self_attn_mask)
-        else:
-            out = self.enc_self_attn(enc_inputs, enc_inputs, enc_inputs, attn_mask=enc_self_attn_mask)
+        out, attn = self.enc_self_attn(enc_inputs, enc_inputs, enc_inputs, attn_mask=enc_self_attn_mask)
         out = self.layer_norm(out + enc_inputs)
         out_2 = self.pos_ffn(out)
         out_2 = self.layer_norm(out_2 + out)
-        if self.few_shot:
-            return out_2, enc_loss
-        else:
-            return out_2
+        return out_2
 
 
 class Encoder(nn.Module):
 
     def __init__(self, d_model, d_ff, d_k, d_v, n_heads,
                  n_layers, pad_index, device,
-                 attn_type, seed, few_shot):
+                 attn_type, seed):
         super(Encoder, self).__init__()
 
         np.random.seed(seed)
@@ -66,10 +59,9 @@ class Encoder(nn.Module):
                 d_model=d_model, d_ff=d_ff,
                 d_k=d_k, d_v=d_v, n_heads=n_heads,
                 device=device,
-                attn_type=attn_type, seed=seed, few_shot=few_shot)
+                attn_type=attn_type, seed=seed)
             self.layers.append(encoder_layer)
         self.layers = nn.ModuleList(self.layers)
-        self.few_shot = few_shot
 
     def forward(self, enc_input):
 
@@ -78,11 +70,6 @@ class Encoder(nn.Module):
         enc_self_attn_mask = None
 
         for layer in self.layers:
-            if self.few_shot:
-                enc_outputs, enc_loss = layer(enc_outputs, enc_self_attn_mask)
-            else:
-                enc_outputs = layer(enc_outputs, enc_self_attn_mask)
-        if self.few_shot:
-            return enc_outputs, enc_loss
-        else:
-            return enc_outputs
+            enc_outputs = layer(enc_outputs, enc_self_attn_mask)
+
+        return enc_outputs
