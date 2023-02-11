@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from functools import reduce
 
 # Lint as: python3
 
@@ -56,7 +57,7 @@ def batching(batch_size, x_en, x_de, y_t, test_id):
     return X_en, X_de, Y_t, tst_id
 
 
-def sample_train_val_test(ddf, max_samples, time_steps, num_encoder_steps, pred_len, column_definition, tgt_all=False):
+def sample_train_val_test(ddf, max_samples, time_steps, num_encoder_steps, pred_len, column_definition, batch_size=256, tgt_all=False):
 
     id_col = utils.get_single_col_by_input_type(InputTypes.ID, column_definition)
     time_col = utils.get_single_col_by_input_type(InputTypes.TIME, column_definition)
@@ -91,6 +92,18 @@ def sample_train_val_test(ddf, max_samples, time_steps, num_encoder_steps, pred_
             valid_sampling_locations[i] for i in np.random.choice(
                 len(valid_sampling_locations), len(valid_sampling_locations), replace=False)
         ]
+
+    ranges = [ranges[i:i + batch_size] for i in range(0, len(ranges), batch_size)]
+
+    def Sort(List):
+        new_list = []
+        for ls in List:
+            new_list.append(sorted(ls, key=lambda x: x[1]))
+        return new_list
+
+    ranges = Sort(ranges)
+
+    ranges = reduce(lambda xs, ys: xs + ys, ranges)
 
     input_size = len(enc_input_cols)
     inputs = np.zeros((max_samples, time_steps, input_size))
@@ -162,7 +175,7 @@ def batch_sampled_data(data, train_percent, max_samples, time_steps,
 
     sample_train = sample_train_val_test(train, train_max, time_steps, num_encoder_steps, pred_len, column_definition)
     sample_valid = sample_train_val_test(valid, valid_max, time_steps, num_encoder_steps, pred_len, column_definition)
-    sample_test = sample_train_val_test(test, valid_max, time_steps, num_encoder_steps, pred_len, column_definition, tgt_all)
+    sample_test = sample_train_val_test(test, valid_max, time_steps, num_encoder_steps, pred_len, column_definition, tgt_all=tgt_all)
 
     train_data = TensorDataset(torch.FloatTensor(sample_train['enc_inputs']),
                                torch.FloatTensor(sample_train['dec_inputs']),
