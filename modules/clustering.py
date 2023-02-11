@@ -23,10 +23,10 @@ class Clustering(nn.Module):
                                       nn.ReLU())
 
         self.proj_to_cluster_k = nn.Sequential(nn.Linear(log_l_k*d_model, d_model, device=self.device),
-                                               nn.Linear(d_model, num_clusters),
+                                               nn.Linear(d_model, num_clusters, device=self.device),
                                                nn.ReLU())
         self.proj_to_cluster_q = nn.Sequential(nn.Linear(log_l * d_model, d_model, device=self.device),
-                                               nn.Linear(d_model, num_clusters),
+                                               nn.Linear(d_model, num_clusters, device=self.device),
                                                nn.ReLU())
         self.cross_entropy = nn.CrossEntropyLoss()
 
