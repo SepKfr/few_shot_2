@@ -44,9 +44,17 @@ class Transformer(nn.Module):
         enc_outputs = self.enc_embedding(enc_inputs)
         dec_outputs = self.dec_embedding(dec_inputs)
 
-        enc_outputs = self.encoder(enc_outputs)
-        dec_outputs = self.decoder(dec_outputs, enc_outputs)
+        if self.few_shot:
+            enc_outputs, enc_loss = self.encoder(enc_outputs)
+            dec_outputs, dec_loss, dec_enc_loss = self.decoder(dec_outputs, enc_outputs)
+            loss_tot = enc_loss + dec_enc_loss + dec_loss
+        else:
+            enc_outputs = self.encoder(enc_outputs)
+            dec_outputs = self.decoder(dec_outputs, enc_outputs)
 
         outputs = self.projection(dec_outputs[:, -self.pred_len:, :])
 
-        return outputs
+        if self.few_shot:
+            return outputs, loss_tot
+        else:
+            return outputs

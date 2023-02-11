@@ -25,14 +25,21 @@ class EncoderLayer(nn.Module):
         self.pos_ffn = PoswiseFeedForwardNet(
             d_model=d_model, d_ff=d_ff, seed=seed)
         self.layer_norm = nn.LayerNorm(d_model, elementwise_affine=False)
+        self.few_shot = few_shot
 
     def forward(self, enc_inputs, enc_self_attn_mask=None):
 
-        out, attn = self.enc_self_attn(enc_inputs, enc_inputs, enc_inputs, attn_mask=enc_self_attn_mask)
+        if self.few_shot:
+            out, attn, loss = self.enc_self_attn(enc_inputs, enc_inputs, enc_inputs, attn_mask=enc_self_attn_mask)
+        else:
+            out, attn = self.enc_self_attn(enc_inputs, enc_inputs, enc_inputs, attn_mask=enc_self_attn_mask)
         out = self.layer_norm(out + enc_inputs)
         out_2 = self.pos_ffn(out)
         out_2 = self.layer_norm(out_2 + out)
-        return out_2
+        if self.few_shot:
+            return out_2, loss
+        else:
+            return out_2
 
 
 class Encoder(nn.Module):
@@ -62,6 +69,7 @@ class Encoder(nn.Module):
                 attn_type=attn_type, seed=seed, few_shot=few_shot)
             self.layers.append(encoder_layer)
         self.layers = nn.ModuleList(self.layers)
+        self.few_shot = few_shot
 
     def forward(self, enc_input):
 
@@ -70,6 +78,12 @@ class Encoder(nn.Module):
         enc_self_attn_mask = None
 
         for layer in self.layers:
-            enc_outputs = layer(enc_outputs, enc_self_attn_mask)
+            if self.few_shot:
+                enc_outputs, loss = layer(enc_outputs, enc_self_attn_mask)
+            else:
+                enc_outputs = layer(enc_outputs, enc_self_attn_mask)
 
-        return enc_outputs
+        if self.few_shot:
+            return enc_outputs, loss
+        else:
+            return enc_outputs

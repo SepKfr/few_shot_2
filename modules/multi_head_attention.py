@@ -45,7 +45,7 @@ class MultiHeadAttention(nn.Module):
 
         if self.attn_type == "ATA":
             if self.few_shot:
-                context, attn = ATA(d_k=self.d_k, device=self.device, h=self.n_heads, seed=self.seed,
+                context, attn, loss = ATA(d_k=self.d_k, device=self.device, h=self.n_heads, seed=self.seed,
                                     l=q_s.shape[2], l_k=k_s.shape[2], few_shot=self.few_shot)(
                 Q=q_s, K=k_s, V=v_s, attn_mask=attn_mask)
             else:
@@ -72,4 +72,7 @@ class MultiHeadAttention(nn.Module):
 
         context = context.transpose(1, 2).contiguous().view(batch_size, -1, self.n_heads * self.d_v)
         output = self.fc(context)
-        return output, attn
+        if self.few_shot:
+            return output, attn, loss
+        else:
+            return output, attn
