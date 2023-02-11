@@ -15,13 +15,18 @@ class Clustering(nn.Module):
         log_l_k = int(math.log(l_k))
         log_l = int(math.log(l))
 
-        self.shrink_k = nn.Linear(l_k, log_l_k, device=self.device)
-        self.shrink_v = nn.Linear(l_k, log_l_k, device=self.device)
-        self.shrink_q = nn.Linear(l, log_l, device=self.device)
+        self.shrink_k = nn.Sequential(nn.Conv1d(l_k, log_l_k, kernel_size=3, padding=int((3-1)/2), device=self.device),
+                                      nn.ReLU())
+        self.shrink_v = nn.Sequential(nn.Conv1d(l_k, log_l_k, kernel_size=3, padding=int((3-1)/2), device=self.device),
+                                      nn.ReLU())
+        self.shrink_q = nn.Sequential(nn.Conv1d(l, log_l, kernel_size=3, padding=int((3-1)/2), device=self.device),
+                                      nn.ReLU())
 
-        self.proj_to_cluster_k = nn.Sequential(nn.Linear(log_l_k*d_model, num_clusters, device=self.device),
-                                             nn.ReLU())
-        self.proj_to_cluster_q = nn.Sequential(nn.Linear(log_l * d_model, num_clusters, device=self.device),
+        self.proj_to_cluster_k = nn.Sequential(nn.Linear(log_l_k*d_model, d_model, device=self.device),
+                                               nn.Linear(d_model, num_clusters),
+                                               nn.ReLU())
+        self.proj_to_cluster_q = nn.Sequential(nn.Linear(log_l * d_model, d_model, device=self.device),
+                                               nn.Linear(d_model, num_clusters),
                                                nn.ReLU())
         self.cross_entropy = nn.CrossEntropyLoss()
 
@@ -29,9 +34,9 @@ class Clustering(nn.Module):
 
         b, h, l, d_k = Q.shape
 
-        K = self.shrink_k(K.permute(0, 1, 3, 2)).permute(0, 1, 3, 2)
-        V = self.shrink_v(V.permute(0, 1, 3, 2)).permute(0, 1, 3, 2)
-        q_shrink = self.shrink_q(Q.permute(0, 1, 3, 2)).permute(0, 1, 3, 2)
+        K = self.shrink_k(K.reshape(b, -1, d_k*h)).reshape(b, h, -1, d_k)
+        V = self.shrink_v(V.reshape(b, -1, d_k*h)).reshape(b, h, -1, d_k)
+        q_shrink = self.shrink_q(Q.reshape(b, -1, d_k*h)).reshape(b, h, -1, d_k)
         l_k = K.shape[2]
         l_shrink = q_shrink.shape[2]
 
@@ -44,7 +49,7 @@ class Clustering(nn.Module):
         cluster_k = torch.softmax(cluster_k_proj, dim=-1)
 
         mu = torch.mean(cluster_q, dim=0)
-        sigma = nn.Softplus()(torch.std(cluster_k, dim=0))
+        sigma = nn.Softplus()(torch.std(cluster_q, dim=0))
 
         dist = torch.distributions.normal.Normal(mu, sigma)
         likelihood = dist.log_prob(cluster_k)
