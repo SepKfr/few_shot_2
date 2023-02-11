@@ -11,7 +11,7 @@ from modules.encoding import PositionalEncoding
 class DecoderLayer(nn.Module):
 
     def __init__(self, d_model, d_ff, d_k, d_v,
-                 n_heads, device, attn_type, seed):
+                 n_heads, device, attn_type, seed, few_shot):
 
         np.random.seed(seed)
         random.seed(seed)
@@ -21,11 +21,11 @@ class DecoderLayer(nn.Module):
         self.dec_self_attn = MultiHeadAttention(
             d_model=d_model, d_k=d_k,
             d_v=d_v, n_heads=n_heads, device=device,
-            attn_type=attn_type, seed=seed)
+            attn_type=attn_type, seed=seed, few_shot=few_shot)
         self.dec_enc_attn = MultiHeadAttention(
             d_model=d_model, d_k=d_k,
             d_v=d_v, n_heads=n_heads, device=device,
-            attn_type=attn_type, seed=seed)
+            attn_type=attn_type, seed=seed, few_shot=few_shot)
         self.pos_ffn = PoswiseFeedForwardNet(
             d_model=d_model, d_ff=d_ff, seed=seed)
         self.layer_norm = nn.LayerNorm(d_model, elementwise_affine=False)
@@ -45,7 +45,7 @@ class Decoder(nn.Module):
 
     def __init__(self, d_model, d_ff, d_k, d_v,
                  n_heads, n_layers, pad_index, device,
-                 attn_type, seed):
+                 attn_type, seed, few_shot):
         super(Decoder, self).__init__()
 
         np.random.seed(seed)
@@ -65,7 +65,7 @@ class Decoder(nn.Module):
                 d_model=d_model, d_ff=d_ff,
                 d_k=d_k, d_v=d_v,
                 n_heads=n_heads, device=device,
-                attn_type=attn_type, seed=seed)
+                attn_type=attn_type, seed=seed, few_shot=few_shot)
             self.layers.append(decoder_layer)
         self.layers = nn.ModuleList(self.layers)
         self.d_k = d_k

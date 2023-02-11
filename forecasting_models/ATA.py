@@ -3,12 +3,14 @@ import torch.nn as nn
 import numpy as np
 import random
 
+from modules.clustering import Clustering
+
 torch.backends.cudnn.benchmark = False
 torch.backends.cudnn.deterministic = True
 
 
 class ATA(nn.Module):
-    def __init__(self, d_k, device, h, seed):
+    def __init__(self, *, d_k, device, h, seed, l=0, l_k=0, few_shot=False):
 
         super(ATA, self).__init__()
 
@@ -39,6 +41,10 @@ class ATA(nn.Module):
 
         self.proj_back_q = nn.Linear(1, self.d_k, bias=False).to(device)
         self.proj_back_k = nn.Linear(1, self.d_k, bias=False).to(device)
+
+        self.few_shot = few_shot
+        if self.few_shot:
+            self.clustering = Clustering(device=device, d_model=d_k*h, l=l, l_k=l_k)
 
         self.factor = 1
 

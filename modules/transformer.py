@@ -10,7 +10,7 @@ class Transformer(nn.Module):
 
     def __init__(self, src_input_size, tgt_input_size, pred_len, d_model,
                  d_ff, d_k, d_v, n_heads, n_layers, src_pad_index,
-                 tgt_pad_index, device, attn_type, seed):
+                 tgt_pad_index, device, attn_type, seed, few_shot):
         super(Transformer, self).__init__()
 
         torch.manual_seed(seed)
@@ -23,13 +23,13 @@ class Transformer(nn.Module):
             d_model=d_model, d_ff=d_ff,
             d_k=d_k, d_v=d_v, n_heads=n_heads,
             n_layers=n_layers, pad_index=src_pad_index,
-            device=device, attn_type=attn_type, seed=seed)
+            device=device, attn_type=attn_type, seed=seed, few_shot=few_shot)
         self.decoder = Decoder(
             d_model=d_model, d_ff=d_ff,
             d_k=d_k, d_v=d_v, n_heads=n_heads,
             n_layers=1, pad_index=tgt_pad_index,
             device=device,
-            attn_type=attn_type, seed=seed)
+            attn_type=attn_type, seed=seed, few_shot=few_shot)
 
         self.enc_embedding = nn.Linear(src_input_size, d_model)
         self.dec_embedding = nn.Linear(tgt_input_size, d_model)
@@ -37,6 +37,7 @@ class Transformer(nn.Module):
         self.attn_type = attn_type
         self.pred_len = pred_len
         self.device = device
+        self.few_shot = few_shot
 
     def forward(self, enc_inputs, dec_inputs):
 

@@ -64,7 +64,8 @@ class Train:
                             tgt_pad_index=0,
                             attn_type=self.attn_type,
                             device=self.device,
-                            seed=self.seed).to(self.device)
+                            seed=self.seed,
+                            few_shot=self.few_shot).to(self.device)
 
         return model
 
