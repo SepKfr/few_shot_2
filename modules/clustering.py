@@ -6,7 +6,7 @@ import numpy as np
 
 
 class Clustering(nn.Module):
-    def __init__(self, *, device, num_clusters=5, d_k, batch_size, l_k):
+    def __init__(self, *, device, num_clusters=5, d_model, l_k):
         super(Clustering, self).__init__()
 
         self.device = device
@@ -16,7 +16,9 @@ class Clustering(nn.Module):
         self.shrink_k = nn.Linear(l_k, 2*log_l_k, device=self.device)
         self.shrink_v = nn.Linear(l_k, 2*log_l_k, device=self.device)
 
-        self.proj_to_cluster_k = nn.Sequential(nn.Linear(batch_size, num_clusters, device=self.device),
+        self.proj_to_cluster_k = nn.Sequential(nn.Linear(d_model, num_clusters, device=self.device),
+                                               nn.ReLU())
+        self.proj_back_to_cluster_k = nn.Sequential(nn.Linear(num_clusters, d_model, device=self.device),
                                                nn.ReLU())
         self.cluster_k_proj = nn.Linear(num_clusters, num_clusters, device=self.device)
         self.cluster_q_proj = nn.Linear(num_clusters, num_clusters, device=self.device)
@@ -35,6 +37,8 @@ class Clustering(nn.Module):
         K_padded = torch.cat([padding, K[1:]])
         K_unfold = K_padded.unfold(0, b, 1)
 
+        K_unfold = K_unfold.reshape(b, l_k, -1, d_k*h)
+
         cluster_k_p = self.proj_to_cluster_k(K_unfold)
 
         cluster_k = self.cluster_k_proj(cluster_k_p)
@@ -52,18 +56,18 @@ class Clustering(nn.Module):
 
         ind_clusters = torch.argmax(cluster_q, dim=-1)
         ind_clusters = ind_clusters.long()
-        ind_clusters = ind_clusters.unsqueeze(-1).repeat(1, 1, 1, 1, self.num_clusters)
 
-        cluster_center = torch.zeros(self.num_clusters, b, h, l_k, d_k, device=self.device)
+        ind_clusters = ind_clusters.unsqueeze(-1).repeat(1, 1, 1, self.num_clusters)
+
+        cluster_center = torch.zeros(self.num_clusters, b, l_k, self.num_clusters, device=self.device)
 
         for i in range(self.num_clusters):
 
             mask = (ind_clusters == i)
-            cluster_q_sub = cluster_q[mask]
-            if len(cluster_q_sub) > 0:
-                cluster_center[i] = cluster_q_sub.mean()
+            cluster_q_sub = cluster_q * mask.long().float()
+            cluster_center[i] = torch.mean(cluster_q_sub, dim=2)
 
-        cluster_center = cluster_center.reshape(b, h, -1, l_k, d_k)
+        cluster_center = self.proj_back_to_cluster_k(cluster_center).reshape(b, h, self.num_clusters, l_k, d_k)
         scores_center = torch.einsum('bhqd, bhckd -> bhcqk', Q, cluster_center)
 
         final_score = torch.max(scores_center, dim=2)[0]
