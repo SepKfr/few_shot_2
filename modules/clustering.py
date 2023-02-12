@@ -6,7 +6,7 @@ import numpy as np
 
 
 class Clustering(nn.Module):
-    def __init__(self, *, device, num_clusters=5, batch_size, l_k):
+    def __init__(self, *, device, num_clusters=10, batch_size, l_k):
         super(Clustering, self).__init__()
 
         self.device = device
@@ -57,15 +57,18 @@ class Clustering(nn.Module):
         ind_clusters = ind_clusters.long()
         ind_clusters = ind_clusters.unsqueeze(-1).repeat(1, 1, 1, 1, self.num_clusters)
 
-        scores_center = torch.zeros(self.num_clusters, b, h, l, l_k, device=self.device)
+        cluster_center = torch.zeros(self.num_clusters, b, h, l_k, d_k, device=self.device)
 
         for i in range(self.num_clusters):
 
             cluster_q_sub = torch.where(ind_clusters == i, cluster_q, 0.0)
             cluster_q_sub = torch.mean(cluster_q_sub, dim=-1)
-            scores_center[i] = torch.einsum('bhqd, bhkd -> bhqk', Q, cluster_q_sub)
+            cluster_center[i] = cluster_q_sub
 
-        final_score = torch.max(scores_center, dim=0)[0]
+        cluster_center = cluster_center.reshape(b, h, -1, l_k, d_k)
+        scores_center = torch.einsum('bhqd, bhckd -> bhcqk', Q, cluster_center)
+
+        final_score = torch.max(scores_center, dim=2)[0]
         attn = torch.softmax(final_score, -1)
 
         context = torch.einsum('bhqk, bhkd -> bhqd', attn, V)
