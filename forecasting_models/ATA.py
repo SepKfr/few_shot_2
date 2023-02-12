@@ -44,7 +44,7 @@ class ATA(nn.Module):
 
         self.few_shot = few_shot
         if self.few_shot:
-            self.clustering = Clustering(device=device, l_k=l_k, batch_size=batch_size)
+            self.clustering = Clustering(device=device, l_k=l_k, batch_size=batch_size, d_k=d_k)
             self.layer_norm = nn.LayerNorm(d_k, device=device)
         self.factor = 1
 
