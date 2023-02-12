@@ -43,8 +43,8 @@ class Clustering(nn.Module):
         cluster_k = torch.softmax(cluster_k, dim=-1)
         cluster_q = torch.softmax(cluster_q, dim=-1)
 
-        mu = torch.mean(cluster_q, dim=0)
-        sigma = nn.Softplus()(torch.std(cluster_q, dim=0))
+        mu = torch.mean(cluster_q, dim=-1)
+        sigma = nn.Softplus()(torch.std(cluster_q, dim=-1))
 
         dist = torch.distributions.normal.Normal(mu, sigma)
         likelihood = dist.log_prob(cluster_k)
