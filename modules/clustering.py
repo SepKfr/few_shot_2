@@ -21,6 +21,9 @@ class Clustering(nn.Module):
         self.cluster_k_proj = nn.Linear(num_clusters, num_clusters, device=self.device)
         self.cluster_q_proj = nn.Linear(num_clusters, num_clusters, device=self.device)
 
+        self.mu = nn.Linear(num_clusters, num_clusters, device=self.device)
+        self.sigam = nn.Linear(num_clusters, num_clusters, device=self.device)
+
         self.cross_entropy = nn.CrossEntropyLoss()
 
     def forward(self, Q, K, V):
@@ -43,8 +46,8 @@ class Clustering(nn.Module):
         cluster_k = torch.softmax(cluster_k, dim=-1)
         cluster_q = torch.softmax(cluster_q, dim=-1)
 
-        mu = torch.mean(cluster_q, dim=-1)
-        sigma = nn.Softplus()(torch.std(cluster_q, dim=-1))
+        mu = self.mu(cluster_q)
+        sigma = nn.Softplus()(self.sigam(cluster_q))
 
         dist = torch.distributions.normal.Normal(mu, sigma)
         likelihood = dist.log_prob(cluster_k)
