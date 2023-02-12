@@ -46,10 +46,10 @@ class MultiHeadAttention(nn.Module):
         if self.attn_type == "ATA":
             if self.few_shot:
                 context, attn, loss = ATA(d_k=self.d_k, device=self.device, h=self.n_heads, seed=self.seed,
-                                    l=q_s.shape[2], l_k=k_s.shape[2], few_shot=self.few_shot)(
+                                          batch_size=q_s.shape[0], few_shot=self.few_shot, l_k=k_s.shape[2])(
                 Q=q_s, K=k_s, V=v_s, attn_mask=attn_mask)
             else:
-                context, attn = ATA(d_k=self.d_k, device=self.device, h=self.n_heads, seed=self.seed)(
+                context, attn = ATA(d_k=self.d_k, device=self.device, h=self.n_heads, seed=self.seed, l_k=k_s.shape[2])(
                     Q=q_s, K=k_s, V=v_s, attn_mask=attn_mask)
 
         # Autoformer forecasting model
@@ -60,9 +60,14 @@ class MultiHeadAttention(nn.Module):
 
         # CNN-trans forecasting model
 
-        elif self.attn_type == "conv_attn":
-            context, attn = ConvAttn(d_k=self.d_k, device=self.device, kernel=9, seed=self.seed, h=self.n_heads)(
-            Q=q_s, K=k_s, V=v_s, attn_mask=attn_mask)
+        elif self.attn_type == "basic_attn":
+            if self.few_shot:
+                context, attn, loss = ConvAttn(d_k=self.d_k, device=self.device, kernel=9, seed=self.seed, h=self.n_heads)(
+                Q=q_s, K=k_s, V=v_s, attn_mask=attn_mask)
+            else:
+                context, attn, loss = ConvAttn(d_k=self.d_k, device=self.device, kernel=9, seed=self.seed,
+                                               h=self.n_heads)(
+                    Q=q_s, K=k_s, V=v_s, attn_mask=attn_mask)
 
         # Informer forecasting model
 
