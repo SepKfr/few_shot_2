@@ -57,7 +57,7 @@ class Clustering(nn.Module):
         ind_clusters = ind_clusters.long()
         ind_clusters = ind_clusters.unsqueeze(-1).repeat(1, 1, 1, 1, self.num_clusters)
 
-        scores_center = torch.zeros(self.num_clusters, b, h, l, l_k)
+        scores_center = torch.zeros(self.num_clusters, b, h, l, l_k, device=self.device)
 
         for i in range(self.num_clusters):
 
