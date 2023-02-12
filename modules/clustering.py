@@ -6,7 +6,7 @@ import numpy as np
 
 
 class Clustering(nn.Module):
-    def __init__(self, *, device, num_clusters=10, batch_size, l_k):
+    def __init__(self, *, device, num_clusters=5, batch_size, l_k):
         super(Clustering, self).__init__()
 
         self.device = device
