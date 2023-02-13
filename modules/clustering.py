@@ -14,14 +14,12 @@ class Clustering(nn.Module):
         self.device = device
         self.num_clusters = num_clusters
 
-        self.proj_to_cluster_k = nn.Sequential(nn.Conv2d(d_model, num_clusters,
-                                                         kernel_size=(1, 9), padding=(0, int((9-1)/2)),
+        self.proj_to_cluster_k = nn.Sequential(nn.Linear(d_model, num_clusters,
                                                          device=self.device),
                                                          nn.ReLU())
-        self.proj_back_to_cluster_k = nn.Sequential(nn.Conv2d(num_clusters, d_model,
-                                                    kernel_size=(1, 9), padding=(0, int((9 - 1) / 2)),
-                                                    device=self.device),
-                                                    nn.ReLU())
+        self.proj_back_to_cluster_k = nn.Sequential(nn.Linear(num_clusters,d_model,
+                                                         device=self.device),
+                                                         nn.ReLU())
         self.cluster_k_proj = nn.Linear(num_clusters, num_clusters, device=self.device)
         self.cluster_q_proj = nn.Linear(num_clusters, num_clusters, device=self.device)
 
@@ -42,7 +40,7 @@ class Clustering(nn.Module):
 
         K_unfold = K_unfold.reshape(b, l_k, -1, d_k*h)
 
-        cluster_k_p = self.proj_to_cluster_k(K_unfold.permute(0, 3, 2, 1)).permute(0, 3, 2, 1)
+        cluster_k_p = self.proj_to_cluster_k(K_unfold)
 
         cluster_k = self.cluster_k_proj(cluster_k_p)
         cluster_q = self.cluster_q_proj(cluster_k_p)
@@ -67,8 +65,7 @@ class Clustering(nn.Module):
 
         cluster_center = torch.stack(cluster_centers)
 
-        cluster_center = self.proj_back_to_cluster_k(cluster_center.permute(0, 3, 2, 1)).\
-            permute(0, 3, 2, 1).reshape(b, h, self.num_clusters, l_k, d_k)
+        cluster_center = self.proj_back_to_cluster_k(cluster_center).reshape(b, h, self.num_clusters, l_k, d_k)
         scores_center = torch.einsum('bhqd, bhckd -> bhcqk', Q, cluster_center)
 
         final_score = torch.max(scores_center, dim=2)[0]
