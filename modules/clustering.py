@@ -1,4 +1,6 @@
 import math
+
+import numpy
 import torch.nn.functional as F
 import torch.nn as nn
 import torch
@@ -6,20 +8,20 @@ import numpy as np
 
 
 class Clustering(nn.Module):
-    def __init__(self, *, device, num_clusters=5, d_model, l_k):
+    def __init__(self, *, device, num_clusters=5, d_model):
         super(Clustering, self).__init__()
 
         self.device = device
         self.num_clusters = num_clusters
 
-        log_l_k = int(np.log(l_k))
-        self.shrink_k = nn.Linear(l_k, 2*log_l_k, device=self.device)
-        self.shrink_v = nn.Linear(l_k, 2*log_l_k, device=self.device)
-
-        self.proj_to_cluster_k = nn.Sequential(nn.Linear(d_model, num_clusters, device=self.device),
-                                               nn.ReLU())
-        self.proj_back_to_cluster_k = nn.Sequential(nn.Linear(num_clusters, d_model, device=self.device),
-                                               nn.ReLU())
+        self.proj_to_cluster_k = nn.Sequential(nn.Conv2d(d_model, num_clusters,
+                                                         kernel_size=(1, 9), padding=(0, int((9-1)/2)),
+                                                         device=self.device),
+                                                         nn.ReLU())
+        self.proj_back_to_cluster_k = nn.Sequential(nn.Conv2d(num_clusters, d_model,
+                                                    kernel_size=(1, 9), padding=(0, int((9 - 1) / 2)),
+                                                    device=self.device),
+                                                    nn.ReLU())
         self.cluster_k_proj = nn.Linear(num_clusters, num_clusters, device=self.device)
         self.cluster_q_proj = nn.Linear(num_clusters, num_clusters, device=self.device)
 
@@ -29,8 +31,9 @@ class Clustering(nn.Module):
 
         b, h, l, d_k = Q.shape
 
-        K = self.shrink_k(K.permute(0, 1, 3, 2)).permute(0, 1, 3, 2)
-        V = self.shrink_v(V.permute(0, 1, 3, 2)).permute(0, 1, 3, 2)
+        K = nn.AvgPool1d(kernel_size=9, padding=int((9-1)/2))(K.reshape(b, d_k*h, -1)).reshape(b, h, -1, d_k)
+        V = nn.AvgPool1d(kernel_size=9, padding=int((9-1)/2))(V.reshape(b, d_k*h, -1)).reshape(b, h, -1, d_k)
+
         l_k = K.shape[2]
 
         padding = torch.zeros_like(K)
@@ -39,7 +42,7 @@ class Clustering(nn.Module):
 
         K_unfold = K_unfold.reshape(b, l_k, -1, d_k*h)
 
-        cluster_k_p = self.proj_to_cluster_k(K_unfold)
+        cluster_k_p = self.proj_to_cluster_k(K_unfold.permute(0, 3, 2, 1)).permute(0, 3, 2, 1)
 
         cluster_k = self.cluster_k_proj(cluster_k_p)
         cluster_q = self.cluster_q_proj(cluster_k_p)
@@ -59,15 +62,13 @@ class Clustering(nn.Module):
 
         ind_clusters = ind_clusters.unsqueeze(-1).repeat(1, 1, 1, self.num_clusters)
 
-        cluster_center = torch.zeros(self.num_clusters, b, l_k, self.num_clusters, device=self.device)
+        cluster_centers = [torch.mean(cluster_q * (ind_clusters == i).long().float(), dim=2)
+                          for i in range(self.num_clusters)]
 
-        for i in range(self.num_clusters):
+        cluster_center = torch.stack(cluster_centers)
 
-            mask = (ind_clusters == i)
-            cluster_q_sub = cluster_q * mask.long().float()
-            cluster_center[i] = torch.mean(cluster_q_sub, dim=2)
-
-        cluster_center = self.proj_back_to_cluster_k(cluster_center).reshape(b, h, self.num_clusters, l_k, d_k)
+        cluster_center = self.proj_back_to_cluster_k(cluster_center.permute(0, 3, 2, 1)).\
+            permute(0, 3, 2, 1).reshape(b, h, self.num_clusters, l_k, d_k)
         scores_center = torch.einsum('bhqd, bhckd -> bhcqk', Q, cluster_center)
 
         final_score = torch.max(scores_center, dim=2)[0]
