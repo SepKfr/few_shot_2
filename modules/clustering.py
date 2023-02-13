@@ -36,7 +36,7 @@ class Clustering(nn.Module):
 
         padding = torch.zeros_like(K)
         K_padded = torch.cat([padding, K[1:]])
-        K_unfold = K_padded.unfold(0, b, 1)
+        K_unfold = K_padded.unfold(0, int(b/2), 1)
 
         K_unfold = K_unfold.reshape(b, l_k, -1, d_k*h)
 
@@ -61,15 +61,14 @@ class Clustering(nn.Module):
         ind_clusters = ind_clusters.unsqueeze(-1).repeat(1, 1, 1, self.num_clusters)
 
         cluster_centers = [torch.mean(cluster_q * (ind_clusters == i).long().float(), dim=2)
-                          for i in range(self.num_clusters)]
+                           for i in range(self.num_clusters)]
 
         cluster_center = torch.stack(cluster_centers)
 
         cluster_center = self.proj_back_to_cluster_k(cluster_center).reshape(b, h, self.num_clusters, l_k, d_k)
-        scores_center = torch.einsum('bhqd, bhckd -> bhcqk', Q, cluster_center)
+        scores_center = torch.einsum('bhqd, bhckd -> bhqk', Q, cluster_center)
 
-        final_score = torch.max(scores_center, dim=2)[0]
-        attn = torch.softmax(final_score, -1)
+        attn = torch.softmax(scores_center, -1)
 
         context = torch.einsum('bhqk, bhkd -> bhqd', attn, V)
 
