@@ -8,7 +8,7 @@ import numpy as np
 
 
 class Clustering(nn.Module):
-    def __init__(self, *, device, num_clusters=5, d_model):
+    def __init__(self, *, device, num_clusters=3, d_model):
         super(Clustering, self).__init__()
 
         self.device = device
@@ -59,14 +59,15 @@ class Clustering(nn.Module):
         ind_clusters = torch.argmax(cluster_q, dim=-1)
         ind_clusters = ind_clusters.long()
 
-        ind_clusters = ind_clusters.unsqueeze(-1).repeat(1, 1, 1, self.num_clusters)
+        cluster_q = self.proj_back_to_cluster_k(cluster_q).reshape(b, l_k, -1, d_k*h)
+
+        ind_clusters = ind_clusters.unsqueeze(-1).repeat(1, 1, 1, d_k*h)
 
         cluster_centers = [torch.mean(cluster_q * (ind_clusters == i).long().float(), dim=2)
                            for i in range(self.num_clusters)]
 
-        cluster_center = torch.stack(cluster_centers)
+        cluster_center = torch.stack(cluster_centers).reshape(b, h, -1, l_k, d_k)
 
-        cluster_center = self.proj_back_to_cluster_k(cluster_center).reshape(b, h, self.num_clusters, l_k, d_k)
         scores_center = torch.einsum('bhqd, bhckd -> bhqk', Q, cluster_center)
 
         attn = torch.softmax(scores_center, -1)
