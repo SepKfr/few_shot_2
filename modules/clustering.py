@@ -37,7 +37,7 @@ class Clustering(nn.Module):
 
         padding = torch.zeros_like(K)
         K_padded = torch.cat([padding, K[1:]])
-        K_unfold = K_padded.unfold(0, int(b/4), 1)
+        K_unfold = K_padded.unfold(0, int(b/2), 1)
 
         K_unfold = K_unfold.reshape(b, l_k, -1, d_k*h)
 
