@@ -8,7 +8,7 @@ import numpy as np
 
 
 class Clustering(nn.Module):
-    def __init__(self, *, device, num_clusters=3, d_model):
+    def __init__(self, *, device, num_clusters=5, d_model):
         super(Clustering, self).__init__()
 
         self.device = device
@@ -37,7 +37,7 @@ class Clustering(nn.Module):
 
         padding = torch.zeros_like(K)
         K_padded = torch.cat([padding, K[1:]])
-        K_unfold = K_padded.unfold(0, int(b/2), 1)
+        K_unfold = K_padded.unfold(0, int(b), 1)
 
         K_unfold = K_unfold.reshape(b, l_k, -1, d_k*h)
 
