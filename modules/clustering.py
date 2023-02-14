@@ -28,10 +28,9 @@ class Clustering(nn.Module):
     def forward(self, Q, K, V):
 
         b, h, l, d_k = Q.shape
-        kernel_size = 2 * int(np.log(K.shape[2]))
 
-        K = nn.MaxPool1d(kernel_size=kernel_size, padding=int((kernel_size-1)/2))(K.reshape(b, d_k*h, -1)).reshape(b, h, -1, d_k)
-        V = nn.MaxPool1d(kernel_size=kernel_size, padding=int((kernel_size-1)/2))(V.reshape(b, d_k*h, -1)).reshape(b, h, -1, d_k)
+        K = nn.MaxPool1d(kernel_size=9, padding=int((9-1)/2))(K.reshape(b, d_k*h, -1)).reshape(b, h, -1, d_k)
+        V = nn.MaxPool1d(kernel_size=9, padding=int((9-1)/2))(V.reshape(b, d_k*h, -1)).reshape(b, h, -1, d_k)
 
         l_k = K.shape[2]
 
@@ -61,7 +60,7 @@ class Clustering(nn.Module):
 
         ind_clusters = ind_clusters.unsqueeze(-1).repeat(1, 1, 1, self.num_clusters)
 
-        cluster_centers = [torch.mean(cluster_q.clone().masked_fill_((ind_clusters == i), 0.0), dim=2)
+        cluster_centers = [torch.mean(cluster_q * (ind_clusters == i).long().float(), dim=2)
                            for i in range(self.num_clusters)]
 
         cluster_center = torch.stack(cluster_centers)
