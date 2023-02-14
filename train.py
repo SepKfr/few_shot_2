@@ -145,7 +145,7 @@ class Train:
             for train_enc, train_dec, train_y in self.train:
                 if self.few_shot:
                     output, cluster_loss = model(train_enc.to(self.device), train_dec.to(self.device))
-                    loss = nn.MSELoss()(output, train_y.to(self.device)) + 0.005 * cluster_loss
+                    loss = nn.MSELoss()(output, train_y.to(self.device)) + 0.001 * cluster_loss
                 else:
                     output = model(train_enc.to(self.device), train_dec.to(self.device))
                     loss = nn.MSELoss()(output, train_y.to(self.device))
@@ -161,7 +161,7 @@ class Train:
             for valid_enc, valid_dec, valid_y in self.valid:
                 if self.few_shot:
                     output, cluster_loss = model(valid_enc.to(self.device), valid_dec.to(self.device))
-                    loss = nn.MSELoss()(output, valid_y.to(self.device)) + 0.005 * cluster_loss
+                    loss = nn.MSELoss()(output, valid_y.to(self.device)) + 0.001 * cluster_loss
                 else:
                     output = model(valid_enc.to(self.device), valid_dec.to(self.device))
                     loss = nn.MSELoss()(output, valid_y.to(self.device))
