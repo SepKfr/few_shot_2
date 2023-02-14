@@ -8,16 +8,16 @@ import numpy as np
 
 
 class Clustering(nn.Module):
-    def __init__(self, *, device, num_clusters=5, d_k):
+    def __init__(self, *, device, num_clusters=5, d_model):
         super(Clustering, self).__init__()
 
         self.device = device
         self.num_clusters = num_clusters
 
-        self.proj_to_cluster_k = nn.Sequential(nn.Linear(d_k, num_clusters,
+        self.proj_to_cluster_k = nn.Sequential(nn.Linear(d_model, num_clusters,
                                                          device=self.device),
                                                          nn.ReLU())
-        self.proj_back_to_cluster_k = nn.Sequential(nn.Linear(num_clusters, d_k,
+        self.proj_back_to_cluster_k = nn.Sequential(nn.Linear(num_clusters, d_model,
                                                               device=self.device),
                                                               nn.ReLU())
         self.cluster_k_proj = nn.Linear(num_clusters, num_clusters, device=self.device)
@@ -39,7 +39,7 @@ class Clustering(nn.Module):
         K_padded = torch.cat([padding, K[1:]])
         K_unfold = K_padded.unfold(0, int(b/2), 1)
 
-        K_unfold = K_unfold.reshape(b, h, l_k, -1, d_k)
+        K_unfold = K_unfold.reshape(b, l_k, -1, d_k*h)
 
         cluster_k_p = self.proj_to_cluster_k(K_unfold)
 
@@ -59,9 +59,9 @@ class Clustering(nn.Module):
         ind_clusters = torch.argmax(cluster_q, dim=-1)
         ind_clusters = ind_clusters.long()
 
-        ind_clusters = ind_clusters.unsqueeze(-1).repeat(1, 1, 1, 1, self.num_clusters)
+        ind_clusters = ind_clusters.unsqueeze(-1).repeat(1, 1, 1, self.num_clusters)
 
-        cluster_centers = [torch.mean(cluster_q * (ind_clusters == i).long().float(), dim=3)
+        cluster_centers = [torch.mean(cluster_q * (ind_clusters == i).long().float(), dim=2)
                            for i in range(self.num_clusters)]
 
         cluster_center = torch.stack(cluster_centers)
