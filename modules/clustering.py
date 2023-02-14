@@ -28,15 +28,16 @@ class Clustering(nn.Module):
     def forward(self, Q, K, V):
 
         b, h, l, d_k = Q.shape
+        kernel_size = 2 * int(np.log(K.shape[2]))
 
-        K = nn.MaxPool1d(kernel_size=9, padding=int((9-1)/2))(K.reshape(b, d_k*h, -1)).reshape(b, h, -1, d_k)
-        V = nn.MaxPool1d(kernel_size=9, padding=int((9-1)/2))(V.reshape(b, d_k*h, -1)).reshape(b, h, -1, d_k)
+        K = nn.MaxPool1d(kernel_size=kernel_size, padding=int((kernel_size-1)/2))(K.reshape(b, d_k*h, -1)).reshape(b, h, -1, d_k)
+        V = nn.MaxPool1d(kernel_size=kernel_size, padding=int((kernel_size-1)/2))(V.reshape(b, d_k*h, -1)).reshape(b, h, -1, d_k)
 
         l_k = K.shape[2]
 
         padding = torch.zeros_like(K)
         K_padded = torch.cat([padding, K[1:]])
-        K_unfold = K_padded.unfold(0, int(b/2), 1)
+        K_unfold = K_padded.unfold(0, int(b), 1)
 
         K_unfold = K_unfold.reshape(b, l_k, -1, d_k*h)
 
