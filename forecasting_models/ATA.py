@@ -10,7 +10,7 @@ torch.backends.cudnn.deterministic = True
 
 
 class ATA(nn.Module):
-    def __init__(self, *, d_k, device, h, seed, batch_size=256, l_k, few_shot=False):
+    def __init__(self, *, d_k, device, h, seed, few_shot=False):
 
         super(ATA, self).__init__()
 
@@ -44,7 +44,7 @@ class ATA(nn.Module):
 
         self.few_shot = few_shot
         if self.few_shot:
-            self.clustering = Clustering(device=device, l_k=l_k, d_model=d_k*h)
+            self.clustering = Clustering(device=device, d_model=d_k*h)
             self.layer_norm = nn.LayerNorm(d_k, device=device)
         self.factor = 1
 

@@ -46,10 +46,10 @@ class MultiHeadAttention(nn.Module):
         if self.attn_type == "ATA":
             if self.few_shot:
                 context, attn, loss = ATA(d_k=self.d_k, device=self.device, h=self.n_heads, seed=self.seed,
-                                          batch_size=q_s.shape[0], few_shot=self.few_shot, l_k=k_s.shape[2])(
+                                          few_shot=self.few_shot)(
                 Q=q_s, K=k_s, V=v_s, attn_mask=attn_mask)
             else:
-                context, attn = ATA(d_k=self.d_k, device=self.device, h=self.n_heads, seed=self.seed, l_k=k_s.shape[2])(
+                context, attn = ATA(d_k=self.d_k, device=self.device, h=self.n_heads, seed=self.seed)(
                     Q=q_s, K=k_s, V=v_s, attn_mask=attn_mask)
 
         # Autoformer forecasting model

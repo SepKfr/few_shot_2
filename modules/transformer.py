@@ -23,7 +23,8 @@ class Transformer(nn.Module):
             d_model=d_model, d_ff=d_ff,
             d_k=d_k, d_v=d_v, n_heads=n_heads,
             n_layers=n_layers, pad_index=src_pad_index,
-            device=device, attn_type=attn_type, seed=seed, few_shot=few_shot)
+            device=device, attn_type=attn_type, seed=seed,
+            few_shot=few_shot)
         self.decoder = Decoder(
             d_model=d_model, d_ff=d_ff,
             d_k=d_k, d_v=d_v, n_heads=n_heads,
