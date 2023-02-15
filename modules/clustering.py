@@ -60,7 +60,7 @@ class Clustering(nn.Module):
 
         ind_clusters = ind_clusters.unsqueeze(-1).repeat(1, 1, 1, self.num_clusters)
 
-        cluster_centers = [torch.mean(cluster_q * (ind_clusters == i).long().float(), dim=2)
+        cluster_centers = [torch.mean(cluster_q.clone().masked_fill_((ind_clusters == i), 0.0), dim=2)
                            for i in range(self.num_clusters)]
 
         cluster_center = torch.stack(cluster_centers)
